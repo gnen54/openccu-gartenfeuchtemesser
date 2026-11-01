@@ -1,0 +1,25 @@
+! OpenCCU Gartenfeuchtemesser - Waechter
+! Faellt der Messer aus (Akku leer, WLAN weg), bliebe "Garten_feucht" auf dem letzten Wert
+! stehen - im schlimmsten Fall auf "ja", und es wuerde nie mehr gegossen. Dieses Skript
+! setzt "Garten_feucht" auf "nein" zurueck, wenn seit MAX_ALTER_S keine Meldung kam.
+! Im Zweifel wird also gegossen - wie ohne Messer.
+!
+! Einrichten: neues Programm "Gartenfeuchte Waechter"
+!   Bedingung: Systemzustand CCU_im_Reboot bei ist falsch, nur pruefen
+!   UND Zeitsteuerung: ganztaegig, Zeitintervall 30 Minuten, taeglich
+!   Aktivitaet "Dann": Skript, diesen Text einfuegen
+! (Ausfuehrlich in README.md, Abschnitt "Waechter".)
+
+integer MAX_ALTER_S = 7200;          ! 2 Stunden (der Messer meldet alle 5 Minuten)
+
+object liste = dom.GetObject(ID_SYSTEM_VARIABLES);
+object stand = liste.Get("Gartenfeuchte_Stand");
+object feucht = liste.Get("Garten_feucht");
+if (stand && feucht) {
+  integer jetzt = system.Date("%Y-%m-%d %H:%M:%S").ToTime().ToInteger();
+  integer alter = jetzt - stand.Timestamp().ToInteger();
+  if ((alter > MAX_ALTER_S) && feucht.State()) {
+    feucht.State(false);
+    stand.State("keine Meldung seit " # (alter / 60) # " min");
+  }
+}

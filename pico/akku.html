@@ -1,0 +1,66 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Akku</title>
+<style>
+:root{--g:#14161a;--f:#1d2026;--r:#2c3038;--t:#e9eaec;--l:#8b919c;--ok:#4cc38a;--warn:#ffc94a;--bad:#e5604d}
+@media (prefers-color-scheme:light){:root{--g:#f2f1ec;--f:#fff;--r:#dcdad2;--t:#1b1d21;--l:#6b6f78;--warn:#e09a00}}
+*{box-sizing:border-box}body{margin:0;background:var(--g);color:var(--t);font:16px/1.4 system-ui,sans-serif;padding:16px}
+main{max-width:480px;margin:0 auto}h1{font-size:21px;margin:0 0 16px}
+.karte{background:var(--f);border:1px solid var(--r);border-radius:16px;padding:16px;margin-bottom:12px}
+.balken{height:22px;border-radius:8px;border:2px solid var(--r);overflow:hidden;margin:10px 0}
+.balken div{height:100%;background:var(--ok);transition:width .3s}
+.gross{font-size:30px;font-weight:700}.leise{color:var(--l);font-size:14px}
+button{font:inherit;color:inherit;background:var(--f);border:1px solid var(--r);border-radius:12px;padding:12px;cursor:pointer;width:100%}
+.haupt{background:var(--ok);color:#10140f;border:0;font-weight:600;margin-bottom:8px}
+label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0}
+input{font:inherit;color:inherit;background:var(--g);border:1px solid var(--r);border-radius:10px;padding:8px;width:90px;text-align:right}
+.uhr{font:700 40px/1.1 ui-monospace,monospace;letter-spacing:.02em;margin:6px 0}.rot{background:var(--bad);color:#fff;border:0;font-weight:600}
+#info{min-height:1.4em;margin-top:10px;font-size:14px;color:var(--l)}a{color:var(--l)}
+</style></head><body><main>
+<h1 id="titel">Akku</h1>
+<div class="karte"><div class="gross" id="rest">…</div><div class="balken"><div id="b" style="width:0"></div></div>
+<div class="leise" id="zeile"></div></div>
+<div class="karte"><button class="haupt" onclick="geh('/akku/geladen')">Akku geladen – Zähler auf null</button>
+<button onclick="geh('/akku/test')">Testnachricht senden</button><div id="info"></div></div>
+<div class="karte"><b>Testlauf – Laufzeit der Powerbank messen</b>
+<div class="uhr" id="uhr">0:00:00</div><div class="leise" id="tinfo"></div>
+<p class="leise" id="ttext" style="margin:8px 0"></p>
+<button class="haupt" id="tknopf" onclick="testlauf()">Testlauf starten</button>
+<div class="leise" id="tletzt" style="margin-top:8px"></div>
+<button id="tueb" onclick="geh('/akku/testlauf/uebernehmen')" style="display:none;margin-top:8px">Als Laufzeit übernehmen</button>
+<p class="leise" style="margin:10px 0 0">Am besten mit voll geladener Powerbank starten. Geht sie während des Tests aus, steht die Dauer nach dem nächsten Einschalten hier (auf die Minute genau).</p></div>
+<div class="karte"><label>Laufzeit voller Akku (h)<input id="lz" type="number" min="1" step="1"></label>
+<label>Warnen bei Rest (h)<input id="wb" type="number" min="0" step="1"></label>
+<label>ntfy-Thema (Push)<input id="nt" type="text" placeholder="leer = aus" style="width:170px;text-align:left" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+<button onclick="setz()">Speichern</button><div class="leise" id="letzte" style="margin-top:10px"></div></div>
+<p><a href="/">← zurück</a></p></main>
+<script>
+let pin=null;try{pin=localStorage.getItem("pin")}catch(e){}
+async function frag(p,d){const h={};if(pin)h["X-PIN"]=pin;if(d)h["Content-Type"]="application/json";
+const r=await fetch(p,d?{method:"POST",headers:h,body:JSON.stringify(d)}:{headers:h});
+if(r.status===401){const n=prompt("PIN:");if(n){pin=n;try{localStorage.setItem("pin",n)}catch(e){}return frag(p,d)}}
+const t=await r.text();if(!r.ok)throw new Error(t);try{return JSON.parse(t)}catch(e){return t}}
+function zeig(s){document.getElementById("titel").textContent="Akku · "+s.name;document.title="Akku "+s.name;document.getElementById("rest").textContent="noch ca. "+Math.round(s.rest_h)+" h ("+s.prozent+" %)";
+const b=document.getElementById("b");b.style.width=s.prozent+"%";
+b.style.background=s.rest_h<=1?"var(--bad)":s.rest_h<=s.warnen_bei_h?"var(--warn)":"var(--ok)";
+document.getElementById("zeile").textContent=s.betrieb_h+" h in Betrieb seit dem Laden · Push "+(s.push?"an":"aus (kein ntfy-Thema)")+(s.wartet?" · Nachricht wartet auf Internet":"");
+const lz=document.getElementById("lz"),wb=document.getElementById("wb");
+if(document.activeElement!==lz)lz.value=s.laufzeit_h;if(document.activeElement!==wb)wb.value=s.warnen_bei_h;
+const nt=document.getElementById("nt");if(nt&&document.activeElement!==nt&&s.ntfy_thema!==undefined)nt.value=s.ntfy_thema||"";
+document.getElementById("letzte").textContent=s.letzte_laufzeit_h?"Letzte gemessene Laufzeit: "+s.letzte_laufzeit_h+" h":""}
+let T={an:false,s:0,um:0};
+function hms(s){s=Math.floor(s);return Math.floor(s/3600)+":"+String(Math.floor(s/60)%60).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function hm(s){const m=Math.floor(s/60);return m>=60?Math.floor(m/60)+" h "+String(m%60).padStart(2,"0")+" min":m+" min"}
+function tick(){document.getElementById("uhr").textContent=hms(T.an?T.s+(Date.now()-T.um)/1000:T.s)}
+function zeigTest(s){if(s.test_aktiv===undefined)return;T={an:s.test_aktiv,s:s.test_s,um:Date.now()};tick();
+const k=document.getElementById("tknopf");k.textContent=s.test_aktiv?"Testlauf beenden":"Testlauf starten";k.className=s.test_aktiv?"rot":"haupt";
+document.getElementById("tinfo").textContent=s.test_aktiv?(s.test_info||"läuft"):"";
+document.getElementById("ttext").textContent=s.test_text||"";
+const l=s.letzter_test_s;document.getElementById("tletzt").textContent=l?"Letzter Testlauf: "+hm(l)+(s.letzter_test_leer?" (bis die Powerbank leer war)":" (von Hand beendet)"):"";
+document.getElementById("tueb").style.display=(l&&l>=600&&!s.test_aktiv)?"block":"none"}
+async function testlauf(){if(T.an&&!confirm("Testlauf wirklich beenden?"))return;geh(T.an?"/akku/testlauf/stop":"/akku/testlauf/start")}
+async function lade(){try{const s=await frag("/akku/status");zeig(s);zeigTest(s)}catch(e){}}
+setInterval(tick,1000);
+async function geh(p){try{document.getElementById("info").textContent=await frag(p);lade()}catch(e){document.getElementById("info").textContent=e.message}}
+async function setz(){try{zeig(await frag("/akku/einstellen",{laufzeit_h:+document.getElementById("lz").value,warnen_bei_h:+document.getElementById("wb").value,ntfy_thema:document.getElementById("nt").value}));document.getElementById("info").textContent="Gespeichert."}catch(e){document.getElementById("info").textContent=e.message}}
+lade();setInterval(lade,10000);
+</script></body></html>

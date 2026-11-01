@@ -1,0 +1,101 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Gartenfeuchte</title>
+<style>
+:root{--g:#14161a;--f:#1d2026;--r:#2c3038;--t:#e9eaec;--l:#8b919c;--ok:#4cc38a;--warn:#ffc94a;--bad:#e5604d;--blau:#4a9eff}
+@media (prefers-color-scheme:light){:root{--g:#f2f1ec;--f:#fff;--r:#dcdad2;--t:#1b1d21;--l:#6b6f78;--warn:#e09a00;--blau:#1f6fd1}}
+*{box-sizing:border-box}body{margin:0;background:var(--g);color:var(--t);font:16px/1.4 system-ui,sans-serif;padding:16px}
+main{max-width:480px;margin:0 auto}h1{font-size:21px;margin:0 0 16px}
+.karte{background:var(--f);border:1px solid var(--r);border-radius:16px;padding:16px;margin-bottom:12px}
+.kopf{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.gross{font-size:44px;font-weight:700;line-height:1.1}.leise{color:var(--l);font-size:14px}
+.chip{border-radius:999px;padding:6px 12px;font-weight:600;font-size:14px;white-space:nowrap}
+.feucht{background:color-mix(in srgb,var(--blau) 22%,transparent);color:var(--blau)}
+.trocken{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
+.fehler{background:color-mix(in srgb,var(--bad) 22%,transparent);color:var(--bad)}
+.balken{position:relative;height:22px;border-radius:8px;border:2px solid var(--r);overflow:hidden;margin:12px 0 4px}
+.balken div{height:100%;background:var(--blau);transition:width .3s}
+.marke{position:absolute;top:0;bottom:0;width:2px;background:var(--t);opacity:.5}
+svg{display:block;width:100%;height:90px;margin-top:8px}
+button{font:inherit;color:inherit;background:var(--f);border:1px solid var(--r);border-radius:12px;padding:12px;cursor:pointer;width:100%}
+button:disabled{opacity:.5}
+.haupt{background:var(--ok);color:#10140f;border:0;font-weight:600}
+.zwei{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+label{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 0}
+input{font:inherit;color:inherit;background:var(--g);border:1px solid var(--r);border-radius:10px;padding:8px;width:90px;text-align:right}
+details{margin-top:4px}summary{cursor:pointer;font-weight:600}
+#info{min-height:1.4em;margin-top:10px;font-size:14px;color:var(--l)}a{color:var(--l)}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+</style></head><body><main>
+<h1>Gartenfeuchte</h1>
+
+<div class="karte">
+ <div class="kopf"><div class="gross" id="proz">…</div><span class="chip" id="chip"></span></div>
+ <div class="balken"><div id="b" style="width:0"></div><span class="marke" id="m1"></span><span class="marke" id="m2"></span></div>
+ <div class="leise" id="zeile"></div>
+ <svg id="kurve" viewBox="0 0 288 100" preserveAspectRatio="none" aria-label="Verlauf 24 Stunden"></svg>
+ <div class="leise">Verlauf der letzten 24 h (seit dem letzten Neustart)</div>
+ <button class="haupt" style="margin-top:12px" onclick="messen()" id="mk">Jetzt messen und melden</button>
+</div>
+
+<div class="karte">
+ <b>OpenCCU</b> <span class="leise" id="ccuip"></span>
+ <div id="ccu" style="margin-top:6px"></div>
+ <div class="leise" id="ccuvar" style="margin-top:6px"></div>
+</div>
+
+<div class="karte">
+ <details><summary>Kalibrieren</summary>
+ <p class="leise">1. Sensor abtrocknen und an die Luft halten → <b>Jetzt trocken</b>.<br>
+ 2. Sensor bis zur weißen Linie in ein Glas Wasser stellen (Elektronik oben bleibt trocken!) → <b>Jetzt nass</b>.<br>
+ Jede Messung dauert ein paar Sekunden.</p>
+ <div class="zwei"><button onclick="kal('trocken')">Jetzt trocken</button><button onclick="kal('nass')">Jetzt nass</button></div>
+ <label style="margin-top:14px">Trocken (mV)<input id="tmv" type="number" step="10"></label>
+ <label>Nass (mV)<input id="nmv" type="number" step="10"></label>
+ </details>
+</div>
+
+<div class="karte">
+ <details><summary>Schaltschwellen</summary>
+ <p class="leise">„Garten_feucht“ wird <b>wahr</b> ab der oberen Schwelle und erst unter der unteren wieder <b>falsch</b>. So flattert der Wert nicht hin und her.</p>
+ <label>Feucht ab (%)<input id="fab" type="number" min="0" max="100"></label>
+ <label>Trocken unter (%)<input id="tun" type="number" min="0" max="100"></label>
+ </details>
+ <button onclick="setz()" style="margin-top:10px">Speichern</button>
+ <div id="info"></div>
+</div>
+
+<p><a href="/akku" id="akkulink" style="display:none">Akku / Powerbank →</a></p>
+</main>
+<script>
+let pin=null;try{pin=localStorage.getItem("pin")}catch(e){}
+async function frag(p,d){const h={};if(pin)h["X-PIN"]=pin;if(d)h["Content-Type"]="application/json";
+const r=await fetch(p,d?{method:"POST",headers:h,body:JSON.stringify(d)}:{headers:h});
+if(r.status===401){const n=prompt("PIN:");if(n){pin=n;try{localStorage.setItem("pin",n)}catch(e){}return frag(p,d)}}
+const t=await r.text();if(!r.ok)throw new Error(t);try{return JSON.parse(t)}catch(e){return t}}
+const $=id=>document.getElementById(id);
+function alt(s){if(s==null)return"–";if(s<60)return"gerade eben";const m=Math.floor(s/60);return m<60?"vor "+m+" min":"vor "+Math.floor(m/60)+" h "+(m%60)+" min"}
+function setzFeld(id,v){const e=$(id);if(document.activeElement!==e)e.value=v}
+function zeig(s){const f=s.feuchte,c=s.ccu;
+ $("proz").textContent=f.prozent==null?"–":Math.round(f.prozent)+" %";
+ const chip=$("chip");
+ if(f.fehler){chip.textContent="Sensorfehler";chip.className="chip fehler"}
+ else if(f.prozent==null){chip.textContent="noch keine Messung";chip.className="chip"}
+ else{chip.textContent=f.feucht?"feucht – Bewässerung pausiert":"trocken – wird gegossen";chip.className="chip "+(f.feucht?"feucht":"trocken")}
+ $("b").style.width=(f.prozent||0)+"%";$("m1").style.left=f.trocken_unter+"%";$("m2").style.left=f.feucht_ab+"%";
+ $("zeile").textContent=(f.fehler?f.fehler+" · ":"")+(f.mv!=null?f.mv+" mV · ":"")+"gemessen "+alt(f.alter_s)+" · alle "+Math.round(f.messen_alle_s/60)+" min";
+ const v=f.verlauf||[];let d="";v.forEach((p,i)=>{d+=(i?"L":"M")+(i*288/Math.max(1,v.length-1)).toFixed(1)+" "+(100-p)});
+ $("kurve").innerHTML='<line x1="0" x2="288" y1="'+(100-f.feucht_ab)+'" y2="'+(100-f.feucht_ab)+'" stroke="currentColor" stroke-opacity=".25" stroke-dasharray="4 4"/>'
+  +'<line x1="0" x2="288" y1="'+(100-f.trocken_unter)+'" y2="'+(100-f.trocken_unter)+'" stroke="currentColor" stroke-opacity=".25" stroke-dasharray="4 4"/>'
+  +(v.length>1?'<path d="'+d+'" fill="none" stroke="var(--blau)" stroke-width="2" vector-effect="non-scaling-stroke"/>':"");
+ $("ccuip").textContent=c.ip;
+ $("ccu").innerHTML=c.ok===null?'<span class="leise">noch nichts gemeldet</span>':(c.ok?'<span class="ok">✓ gemeldet '+alt(c.alter_s)+'</span>':'<span class="bad">✗ '+c.info+'</span>'+(c.wartet?' <span class="leise">· neuer Versuch läuft</span>':''));
+ $("ccuvar").textContent="Systemvariablen: "+c.variablen.join(", ");
+ setzFeld("tmv",f.trocken_mv);setzFeld("nmv",f.nass_mv);setzFeld("fab",f.feucht_ab);setzFeld("tun",f.trocken_unter);
+ $("akkulink").style.display=s.akku_h!=null?"inline":"none";
+ if(s.akku_h!=null)$("akkulink").textContent="Akku / Powerbank: noch ca. "+Math.round(s.akku_h)+" h →"}
+async function lade(){try{zeig(await frag("/status"))}catch(e){}}
+async function messen(){$("mk").disabled=true;try{zeig(await frag("/messen"))}catch(e){$("info").textContent=e.message}$("mk").disabled=false}
+async function kal(w){$("info").textContent="Messe …";try{zeig(await frag("/kalibrieren",{was:w}));$("info").textContent=(w==="trocken"?"Trocken":"Nass")+"-Wert gespeichert."}catch(e){$("info").textContent=e.message;lade()}}
+async function setz(){try{zeig(await frag("/einstellen",{trocken_mv:+$("tmv").value,nass_mv:+$("nmv").value,feucht_ab:+$("fab").value,trocken_unter:+$("tun").value}));$("info").textContent="Gespeichert und an die OpenCCU gemeldet."}catch(e){$("info").textContent=e.message}}
+lade();setInterval(lade,10000);
+</script></body></html>

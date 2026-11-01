@@ -1,0 +1,6 @@
+feuchte.json
+feuchte.json.neu
+akku.json
+akku.json.neu
+__pycache__/
+*.pyc

@@ -1,0 +1,77 @@
+! OpenCCU Gartenfeuchtemesser - Systemvariablen anlegen
+! Einmalig ausfuehren: OpenCCU -> Programme und Verknuepfungen -> Programme & Zentralenverknuepfung
+! -> "Skript testen", diesen Text einfuegen, "Ausfuehren". Bereits vorhandene Variablen
+! bleiben unveraendert. Danach unter Einstellungen -> Systemvariablen pruefen.
+! (Wer lieber klickt: README.md, Abschnitt "Systemvariablen von Hand anlegen".)
+
+object liste = dom.GetObject(ID_SYSTEM_VARIABLES);
+object sv;
+string angelegt = "";
+
+! --- Gartenfeuchte: Zahl 0-100 %
+if (!liste.Get("Gartenfeuchte")) {
+  sv = dom.CreateObject(OT_VARDP);
+  sv.Name("Gartenfeuchte");
+  liste.Add(sv.ID());
+  sv.ValueType(ivtFloat);
+  sv.ValueSubType(istGeneric);
+  sv.ValueMin(0);
+  sv.ValueMax(100);
+  sv.ValueUnit("%");
+  sv.DPInfo("Bodenfeuchte Garten (Gartenfeuchtemesser)");
+  sv.State(0);
+  sv.Internal(false);
+  sv.Visible(true);
+  angelegt = angelegt # "Gartenfeuchte ";
+}
+
+! --- Garten_feucht: Logikwert (wahr = Boden feucht genug, Bewaesserung kann ausfallen)
+if (!liste.Get("Garten_feucht")) {
+  sv = dom.CreateObject(OT_VARDP);
+  sv.Name("Garten_feucht");
+  liste.Add(sv.ID());
+  sv.ValueType(ivtBinary);
+  sv.ValueSubType(istBool);
+  sv.ValueName0("nein");
+  sv.ValueName1("ja");
+  sv.DPInfo("Boden feucht genug - Bewaesserung aussetzen (Gartenfeuchtemesser)");
+  sv.State(false);
+  sv.Internal(false);
+  sv.Visible(true);
+  angelegt = angelegt # "Garten_feucht ";
+}
+
+! --- Gartenfeuchte_Stand: Zeichenkette, Uhrzeit der letzten Meldung
+if (!liste.Get("Gartenfeuchte_Stand")) {
+  sv = dom.CreateObject(OT_VARDP);
+  sv.Name("Gartenfeuchte_Stand");
+  liste.Add(sv.ID());
+  sv.ValueType(ivtString);
+  sv.ValueSubType(istChar8859);
+  sv.DPInfo("Letzte Meldung des Gartenfeuchtemessers");
+  sv.State("noch keine Meldung");
+  sv.Internal(false);
+  sv.Visible(true);
+  angelegt = angelegt # "Gartenfeuchte_Stand ";
+}
+
+! --- Gartenfeuchte_Akku: Zahl 0-100 % (nur Pico mit Powerbank; schadet sonst nicht)
+if (!liste.Get("Gartenfeuchte_Akku")) {
+  sv = dom.CreateObject(OT_VARDP);
+  sv.Name("Gartenfeuchte_Akku");
+  liste.Add(sv.ID());
+  sv.ValueType(ivtFloat);
+  sv.ValueSubType(istGeneric);
+  sv.ValueMin(0);
+  sv.ValueMax(100);
+  sv.ValueUnit("%");
+  sv.DPInfo("Powerbank des Gartenfeuchtemessers (geschaetzt)");
+  sv.State(100);
+  sv.Internal(false);
+  sv.Visible(true);
+  angelegt = angelegt # "Gartenfeuchte_Akku ";
+}
+
+dom.RTUpdate(false);
+if (angelegt == "") { angelegt = "nichts - alle Variablen gab es schon"; }
+WriteLine("Angelegt: " # angelegt);

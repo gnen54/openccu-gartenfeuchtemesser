@@ -1,0 +1,21 @@
+# systemd-Dienst fuer den Gartenfeuchtemesser auf dem Raspberry Pi
+# Pfad unten anpassen, falls das Repo nicht in /home/pi liegt. Einrichten:
+#   sudo cp gartenfeuchte.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gartenfeuchte
+#   journalctl -u gartenfeuchte -f        (Ausgaben ansehen)
+
+[Unit]
+Description=OpenCCU Gartenfeuchtemesser
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/usr/bin/python3 /home/pi/openccu-gartenfeuchtemesser/raspi/gartenfeuchte.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
