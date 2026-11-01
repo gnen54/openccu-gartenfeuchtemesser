@@ -1,6 +1,6 @@
 # Gehäuse für den Gartenfeuchtemesser
 
-Wasserdichtes 3D-Druck-Gehäuse für **Pico W + 4,8-V-Akkupack (4 × AA)**, mit Dichtnut
+Wasserdichtes 3D-Druck-Gehäuse für **Pico W + 4,8-V-NiMH-Akkupack (4 × AA nebeneinander, 56,8 × 51 × 14,5 mm)**, mit Dichtnut
 für eine Rundschnur, 8 Deckelschrauben, zwei Befestigungslaschen und Kabelverschraubung
 für das Sensorkabel.
 
@@ -17,15 +17,15 @@ für das Sensorkabel.
 
 | | |
 |---|---|
-| Unterteil außen | 69 × 91 mm, 39 mm tief; mit Dichtrand 89 × 111 mm |
+| Unterteil außen | 88 × 91 mm, 31 mm tief; mit Dichtrand 108 × 111 mm |
 | mit Laschen | 139 mm lang |
-| Deckel | 89 × 111 × 4 mm (+ 3 mm Zentrierkragen) |
-| Innenraum | 64 × 86 × 36 mm |
+| Deckel | 108 × 111 × 4 mm (+ 3 mm Zentrierkragen) |
+| Gesamttiefe mit Deckel | 35 mm |
+| Innenraum | 83 × 86 × 28 mm |
 | Pico-Fach | 28 mm breit, 4 Stege für M2-Schrauben, oben 25 mm frei für den USB-Stecker |
-| Akkuschacht | 34 × 86 × 36 mm, ausgelegt für einen 2 × 2-Block 54 × 32 × 32 mm |
+| Akkuschacht | 53 × 86 mm, der Akkupack liegt flach (Längsseite 56,8 mm nach oben/unten) |
 
-**Akku zuerst messen!** Ist dein Akkupack anders gebaut (z. B. 4 Zellen nebeneinander),
-in `gehaeuse.scad` oben `AKKU = [Länge, Breite, Höhe]` eintragen. Passt er nicht, meldet
+**Anderer Akku?** In `gehaeuse.scad` oben `AKKU = [Länge, Breite, Höhe]` eintragen. Passt er nicht, meldet
 OpenSCAD beim Rendern „Akku zu lang/zu hoch“ – dann `INNEN_L` bzw. `INNEN_H` vergrößern.
 
 ## Einkaufsliste
@@ -47,7 +47,8 @@ OpenSCAD beim Rendern „Akku zu lang/zu hoch“ – dann `INNEN_L` bzw. `INNEN_
 - **Wasserdicht drucken:** 4 Wände (Perimeter), 5 Boden- und Deckschichten, Infill 30–40 %.
 - **Keine Stützen nötig:** Der Dichtrand hat unten eine 45°-Fase. Unterteil mit dem Boden
   aufs Bett, Deckel mit der glatten Außenseite aufs Bett.
-- Die Bohrung für die PG7 liegt waagerecht in der Wand; die kleine Brücke oben im Loch
+- Die Bohrung für die PG7 liegt waagerecht in der Wand, außen mit einer flachen
+  Auflage (dort ist die Fase des Dichtrands ausgespart); die kleine Brücke oben im Loch
   druckt jeder Drucker. Ggf. mit einem 12,5-mm-Bohrer nacharbeiten.
 
 ## Zusammenbau
@@ -58,7 +59,8 @@ OpenSCAD beim Rendern „Akku zu lang/zu hoch“ – dann `INNEN_L` bzw. `INNEN_
 3. **Sensorkabel** durch die PG7 führen, am Pico anschließen (GP22, GND, GP26), Verschraubung
    zudrehen.
 4. **Akkupack** in den großen Schacht, Kabel über die Aussparung der Trennwand zum Pico.
-   Leerräume mit einem Stück Schaumstoff füllen, damit nichts klappert.
+   Er liegt flach auf dem Boden; den Rest des Schachts
+   mit einem Stück Schaumstoff füllen, damit nichts klappert.
 5. **Rundschnur** in die Nut drücken, auf Länge schneiden (ca. 33 cm), Enden stumpf
    aneinanderstoßen und mit einem Tropfen Silikon-Dichtmasse verbinden. Die Schnur steht
    ca. 0,8 mm über – das ist die Verpressung.

@@ -12,14 +12,14 @@
 teil = "unterteil";   // "unterteil", "deckel" oder "beide"
 
 /* [Akkupack] */
-AKKU = [54, 32, 32];   // Laenge x Breite x Hoehe (4 x AA als 2x2-Block) - an deinen Akku anpassen!
+AKKU = [56.8, 51, 14.5]; // Laenge x Breite x Hoehe: 4,8 V NiMH, 4 x AA nebeneinander, liegt flach
 AKKU_LUFT = 1.0;       // Spiel rundum
 
 /* [Innenraum] */
 PICO_ZONE_B = 28;      // Breite Pico-Fach
 TRENN = 2.0;           // Trennwand
 INNEN_L = 86;          // Kabelverschraubung unten, Pico 51 mm, oben 25 mm fuer USB-Stecker
-INNEN_H = 36;
+INNEN_H = 28;
 WAND = 2.5;
 BODEN = 3.0;
 R_AUSSEN = 4.0;
@@ -54,6 +54,7 @@ LASCHE_LOCH_ABST = 17;
 /* [Kabel und Pico] */
 PG7_LOCH = 12.5;       // PG7; M12x1,5: 12.2
 PG7_Z = 12;
+PG7_SITZ = 20;         // flache Auflage aussen (Fase des Dichtrands dort ausgespart)
 PICO_LOCH_X = 11.4;
 PICO_LOCH_Y = 47.0;
 PICO_STEG_H = 5.0;
@@ -61,7 +62,7 @@ PICO_STEG_D = 5.0;
 PICO_STEG_LOCH = 1.8;
 PICO_ABST_UNTEN = 10;
 PICO_L = 51;
-TRENN_H = 22;
+TRENN_H = 16;
 
 $fn = 64;
 
@@ -75,6 +76,7 @@ FL_L = AUSSEN_L + 2 * FLANSCH;
 
 assert(INNEN_L >= AKKU[0] + 2 * AKKU_LUFT, "Akku zu lang fuer INNEN_L");
 assert(INNEN_H >= AKKU[2] + 1, "Akku zu hoch fuer INNEN_H");
+assert(PG7_Z + PG7_SITZ / 2 < KOERPER_H - FLANSCH_DICKE, "Auflage PG7 schneidet in den Dichtrand");
 
 module rrect(b, l, r) {
     rr = max(0.01, min(r, b / 2 - 0.01, l / 2 - 0.01));
@@ -133,6 +135,9 @@ module unterteil() {
         // Kabelverschraubung unten (-Y), im Pico-Fach
         translate([x_pico, -INNEN_L / 2 + WAND, PG7_Z]) rotate([90, 0, 0])
             cylinder(h = WAND * 4, d = PG7_LOCH);
+        // flache Auflage fuer die Kabelverschraubung
+        translate([x_pico, -AUSSEN_L / 2, PG7_Z]) rotate([90, 0, 0])
+            cylinder(h = FLANSCH + 5, d = PG7_SITZ);
     }
     // Pico-Stege
     for (dx = [-PICO_LOCH_X / 2, PICO_LOCH_X / 2], dy = [-PICO_LOCH_Y / 2, PICO_LOCH_Y / 2])

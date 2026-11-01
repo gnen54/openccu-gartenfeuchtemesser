@@ -17,12 +17,12 @@ from manifold3d import CrossSection, JoinType, Manifold
 m.set_circular_segments(64)
 
 # ---------------------------------------------------------------- Masse (wie gehaeuse.scad)
-AKKU = (54, 32, 32)        # Akkupack Laenge x Breite x Hoehe (4 x AA, 2 x 2 als Block)
+AKKU = (56.8, 51, 14.5)    # Akkupack Laenge x Breite x Hoehe: 4,8 V NiMH, 4 x AA nebeneinander, liegt flach
 AKKU_LUFT = 1.0            # Spiel rundum im Akkuschacht
 PICO_ZONE_B = 28           # Breite des Pico-Fachs (Pico W ist 21 mm breit)
 TRENN = 2.0                # Trennwand Pico-Fach / Akkuschacht
 INNEN_L = 86               # Innenlaenge: Kabelverschraubung unten, Pico W (51 mm), oben 25 mm fuer den USB-Stecker
-INNEN_H = 36               # Innenhoehe
+INNEN_H = 28               # Innenhoehe (Pico mit Kabeln, Mutter der PG7)
 WAND = 2.5
 BODEN = 3.0
 R_AUSSEN = 4.0             # Eckenradius aussen
@@ -54,6 +54,7 @@ LASCHE_LOCH_ABST = 17      # Lochmitte ab Aussenwand
 
 PG7_LOCH = 12.5            # Kabelverschraubung PG7 (M12x1,5: 12,2)
 PG7_Z = 12                 # Hoehe der Lochmitte ueber dem Boden-Aussenmass
+PG7_SITZ = 20              # flache Auflage aussen (die Fase des Dichtrands wird dort ausgespart)
 
 PICO_LOCH_X = 11.4         # Lochabstand Pico W (quer)
 PICO_LOCH_Y = 47.0         # Lochabstand Pico W (laengs)
@@ -63,7 +64,7 @@ PICO_STEG_LOCH = 1.8       # M2-Blechschraube
 PICO_ABST_UNTEN = 10       # Pico-Unterkante ab Innenwand unten (Platz fuer die Mutter der PG7)
 PICO_L = 51
 
-TRENN_H = 22               # Trennwand niedriger als der Innenraum (Kabel drueber)
+TRENN_H = 16               # Trennwand niedriger als der Innenraum (Kabel drueber)
 
 # ---------------------------------------------------------------- abgeleitete Masse
 INNEN_B = PICO_ZONE_B + TRENN + AKKU[1] + 2 * AKKU_LUFT
@@ -152,6 +153,10 @@ def unterteil():
     x_pico = -INNEN_B / 2 + PICO_ZONE_B / 2
     teil -= Manifold.cylinder(WAND * 4, PG7_LOCH / 2).rotate((90, 0, 0))\
         .translate((x_pico, -INNEN_L / 2 + WAND, PG7_Z))
+    # flache Auflage fuer die Kabelverschraubung: Fase davor aussparen
+    teil -= Manifold.cylinder(FLANSCH + 5, PG7_SITZ / 2).rotate((90, 0, 0))\
+        .translate((x_pico, -AUSSEN_L / 2, PG7_Z))
+    assert PG7_Z + PG7_SITZ / 2 < KOERPER_H - FLANSCH_DICKE, "Auflage PG7 schneidet in den Dichtrand"
 
     # Pico-Stege (Pico-Mitte so, dass unten die PG7-Mutter und oben der USB-Stecker Platz hat)
     y_pico = -INNEN_L / 2 + PICO_ABST_UNTEN + PICO_L / 2
