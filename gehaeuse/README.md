@@ -75,9 +75,8 @@ OpenSCAD beim Rendern „Akku zu lang/zu hoch“ – dann `INNEN_L` bzw. `INNEN_
   **VSYS höchstens 5,5 V**. Darum gehört eine **Schottky-Diode 1N5817** in die Plus-Leitung
   (Ring zum Pico hin). Sie senkt die Spannung um ca. 0,3–0,4 V und schützt zugleich vor
   Verpolung. Akku-Plus → Diode → VSYS (Pin 39), Akku-Minus → GND (z. B. Pin 33).
-- **Laufzeit:** Mit dauerhaft verbundenem WLAN braucht der Pico W etwa 40–50 mA. Reale
-  AA-NiMH-Zellen haben meist 2000–2500 mAh (Aufdrucke wie „4200 mAh“ sind bei AA nicht
-  erreichbar). Das reicht nur für etwa **2 Tage**. Für einen Dauerbetrieb im Garten braucht
-  es einen Sparbetrieb (Pico schläft zwischen den Messungen, WLAN nur kurz an) – damit
-  sind mehrere Wochen möglich. Mit dem Testlauf auf der Akkuseite lässt sich die echte
-  Laufzeit messen.
+- **Laufzeit:** Reale AA-NiMH-Zellen haben meist 2000–2500 mAh (Aufdrucke wie „4200 mAh“
+  sind bei AA nicht erreichbar). Mit dauerhaft verbundenem WLAN (40–50 mA) reicht das nur
+  für etwa 2 Tage – darum ist im Programm der **Sparmodus** eingeschaltet (WLAN nur im
+  Fenster zur vollen Stunde und kurz zum Melden, dazwischen schläft der Pico). Damit sind
+  grob 2 Wochen möglich; die echte Laufzeit misst der Testlauf auf der Akkuseite.

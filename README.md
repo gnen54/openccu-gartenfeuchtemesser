@@ -246,16 +246,32 @@ Antwort z. B.: „Gartenfeuchte 42 Prozent, trocken, es wird gegossen.“
 Ist in `main.py` eine `WEB_PIN` gesetzt, brauchen Einstellungen und `/messen` die PIN
 (`?pin=1234` anhängen); `/feuchte` und `/status` gehen ohne.
 
-## Akku / Powerbank
+## Akku und Sparmodus
 
 Wie beim Rolltor: **http://gartenfeuchte.local/akku** zeigt die geschätzte Restlaufzeit,
 schickt per **ntfy** eine Push-Nachricht „Akku laden“ und hat einen **Testlauf** zum
-Einmessen der Powerbank. Der Pico W braucht mit dauerhaft verbundenem WLAN etwa
-40–50 mA, eine 10 000-mAh-Powerbank hält damit grob eine Woche. Zusätzlich landet der
-Akkustand in der OpenCCU (`Gartenfeuchte_Akku`) – damit kann auch die OpenCCU warnen.
+Einmessen des Akkus. Zusätzlich landet der Akkustand in der OpenCCU (`Gartenfeuchte_Akku`) –
+damit kann auch die OpenCCU warnen.
 
-Für den Dauerbetrieb im Garten ist ein **USB-Netzteil** (z. B. über eine Außensteckdose)
-bequemer; dann `AKKU_BENUTZEN = False`.
+**Sparmodus** (`SPARMODUS = True`, wie bei der LED-Uhr):
+
+| | |
+|---|---|
+| WLAN-Fenster | zu jeder vollen Stunde **hh:00 bis hh:05** und nach dem Einschalten: Webseite erreichbar, Uhr wird gestellt, wartende Push geht raus |
+| Verlängern | Knopf auf der Seite: WLAN **30 min** länger an (z. B. zum Kalibrieren) |
+| Messen | alle **15 min**; das WLAN geht nur für die Meldung an die OpenCCU kurz an (wenige Sekunden) |
+| Dazwischen | WLAN aus, Pico schläft (`machine.lightsleep`) |
+
+Grobe Schätzung: im Mittel etwa 5–7 mA statt 40–50 mA – mit einem 4,8-V-AA-Akkupack
+(real ca. 2000–2500 mAh) etwa **2 Wochen** statt 2 Tagen. Den größten Anteil hat das
+stündliche Fenster: mit `WLAN_FENSTER_MIN = 2` hält der Akku spürbar länger. Die echte
+Laufzeit misst der **Testlauf** auf der Akkuseite.
+
+Im Sparmodus ist die Webseite (und die Siri-Abfrage) nur im Fenster erreichbar. Der
+Wächter in der OpenCCU (2 h) bleibt passend: der Messer meldet alle 15 min.
+
+Mit **USB-Netzteil** (z. B. über eine Außensteckdose): `SPARMODUS = False` und
+`AKKU_BENUTZEN = False` – dann ist die Seite immer erreichbar und es wird alle 5 min gemessen.
 
 ## Variante Raspberry Pi 3
 

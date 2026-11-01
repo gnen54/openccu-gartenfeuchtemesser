@@ -17,13 +17,21 @@
 #   - Bedienung im Browser: http://gartenfeuchte.local (Heim-WLAN)
 #   - Kalibrieren auf der Seite: Sensor an der Luft -> "trocken", im Wasserglas -> "nass"
 #   - Siri: Kurzbefehl ruft http://gartenfeuchte.local/feuchte auf -> Antwort zum Vorlesen
-#   - Akku: http://gartenfeuchte.local/akku (Powerbank-Waechter mit Push, wie beim Rolltor)
+#   - Akku: http://gartenfeuchte.local/akku (Akku-Waechter mit Push, wie beim Rolltor)
+#
+# SPARMODUS fuer Akkubetrieb (wie bei der LED-Uhr): das WLAN ist nur in einem Fenster zu jeder
+# vollen Stunde an (hh:00 bis hh:05, und nach dem Einschalten) - dann ist die Webseite
+# erreichbar, die Uhr wird gestellt und eine wartende Push-Nachricht geht raus. Auf der
+# Seite laesst sich das Fenster per Knopf um 30 min verlaengern (z. B. zum Kalibrieren).
+# Ausserhalb der Fenster misst der Pico alle 15 min, schaltet das WLAN nur fuer die Meldung
+# an die OpenCCU kurz ein (wenige Sekunden) und schlaeft dazwischen (machine.lightsleep).
 
 import json
 import os
 import select
 import socket
 import time
+import machine
 from machine import ADC, Pin
 
 import ccu
@@ -48,7 +56,7 @@ SENSOR_ADC_PIN = 26
 SENSOR_STROM_PIN = 22        # GP22 = Pin 29
 AUFWAERMEN_MS = 2000         # so lange nach dem Einschalten warten (Ausgang muss sich einpendeln)
 PROBEN = 15                  # je Messung so viele Proben, davon der Median
-MESSEN_ALLE_S = 300          # alle 5 min messen und an die OpenCCU melden
+MESSEN_ALLE_S = 300          # alle 5 min messen und an die OpenCCU melden (ohne Sparmodus)
 
 # Kalibrierung (Spannung in mV). Hoehere Spannung = trockener. Diese Werte sind nur der
 # Anfang - auf der Seite mit "Jetzt trocken" / "Jetzt nass" einmessen, das wird gespeichert.
@@ -91,15 +99,23 @@ WLAN_PRUEFEN_ALLE_S = 60             # Heim-WLAN weg? Dann neu verbinden
 WEB_PORT = 80
 WEB_PIN = None                       # Zahl = Einstellungen auf der Seite brauchen die PIN
 
+# Sparmodus fuer Akkubetrieb (siehe oben). False = WLAN und Webseite immer an (Netzteil).
+SPARMODUS = True
+SPAR_MESSEN_ALLE_S = 900     # im Sparmodus alle 15 min messen und melden
+WLAN_FENSTER_MIN = 5         # WLAN an von hh:00 bis hh:05 (und nach dem Einschalten)
+WLAN_VERLAENGERN_MIN = 30    # Knopf auf der Seite: WLAN so lange anlassen
+WLAN_KURZ_TIMEOUT_S = 15     # Verbindungsaufbau fuer eine Meldung hoechstens so lange
+LEICHTSCHLAF = True          # zwischen den Messungen machine.lightsleep (spart am meisten)
+
 DATEI = "feuchte.json"
 SEITE_DATEI = "seite.html"
-VERLAUF_PUNKTE = 288                 # 24 h bei 5 min - fuer die Kurve auf der Seite
+VERLAUF_PUNKTE = 288                 # Messpunkte fuer die Kurve (24 h bei 5 min, 72 h bei 15 min)
 
-# Akku-Waechter (Powerbank). Bei Netzteil: AKKU_BENUTZEN = False.
-# Laufzeit einmessen: Akkuseite -> Testlauf (siehe akku.py). Der Pico W braucht mit WLAN
-# etwa 40-50 mA - eine 10 000-mAh-Powerbank haelt grob eine Woche.
+# Akku-Waechter. Bei Netzteil: AKKU_BENUTZEN = False.
+# Laufzeit einmessen: Akkuseite -> Testlauf (siehe akku.py). Ohne Sparmodus braucht der
+# Pico W mit WLAN etwa 40-50 mA, mit Sparmodus nur einen Bruchteil davon.
 AKKU_BENUTZEN = True
-AKKU_LAUFZEIT_H = 150
+AKKU_LAUFZEIT_H = 200        # Platzhalter - per Testlauf einmessen!
 AKKU_WARNEN_BEI_H = 24
 NTFY_THEMA = ""              # z. B. "garten-7k3q9" - leer = keine Push-Nachricht
 AKKU = None                  # wird in main() angelegt
@@ -377,6 +393,44 @@ def wlan_starten():
     return ip, "eigenes"
 
 
+def wlan_an(timeout_s=WLAN_KURZ_TIMEOUT_S):
+    """Sparmodus: Heim-WLAN einschalten und verbinden. True = verbunden."""
+    if STA is None:
+        return False
+    if STA.isconnected():
+        return True
+    STA.active(True)
+    feste_ip_setzen(STA)
+    STA.connect(HEIM_WLAN_NAME, HEIM_WLAN_PASSWORT)
+    bis = time.ticks_add(time.ticks_ms(), timeout_s * 1000)
+    while not STA.isconnected() and time.ticks_diff(bis, time.ticks_ms()) > 0:
+        time.sleep_ms(100)
+    return STA.isconnected()
+
+
+def wlan_aus():
+    """Sparmodus: WLAN-Chip ganz abschalten (spart etwa 30-40 mA)."""
+    if STA is None:
+        return
+    try:
+        STA.disconnect()
+    except Exception:
+        pass
+    STA.active(False)
+
+
+def uhr_stellen():
+    """Uhr per NTP stellen (fuer das Fenster zur vollen Stunde). Klappt es nicht, laeuft
+    das Fenster einfach jede Stunde ab dem Einschalten."""
+    try:
+        import ntptime
+        ntptime.settime()
+        return True
+    except Exception as e:
+        print("Uhr nicht gestellt:", e)
+        return False
+
+
 def wlan_pruefen():
     """Im Garten reisst das WLAN schon mal ab - dann neu verbinden (blockiert nicht)."""
     if STA is None or STA.isconnected():
@@ -420,6 +474,13 @@ class Webseite:
         self.server.setblocking(False)
         self.poll = select.poll()
         self.poll.register(self.server, select.POLLIN)
+
+    def schliessen(self):
+        try:
+            self.poll.unregister(self.server)
+        except Exception:
+            pass
+        self.server.close()
 
     def schritt(self):
         for _ in self.poll.poll(0):
@@ -490,6 +551,8 @@ class Webseite:
     def _status(self):
         return json.dumps({"feuchte": self.feuchte.status(), "ccu": self.melder.status(),
                            "wlan": self.modus, "host": HOSTNAME,
+                           "sparmodus": spar_aktiv(self.modus), "verlaengern_min": WLAN_VERLAENGERN_MIN,
+                           "wlan_rest_min": fenster_rest_min(),
                            "akku_h": round(AKKU.rest_h(), 1) if AKKU else None,
                            "akku_stufe": AKKU.stufe if AKKU else 0})
 
@@ -518,6 +581,12 @@ class Webseite:
             self.feuchte.neuer_wert(self.sensor.messen())
             self.melder.melden(self.feuchte)
             return self._senden(kunde, 200, self._status())
+        if methode == "GET" and pfad == "/wlan/verlaengern":
+            if not spar_aktiv(self.modus):
+                return self._senden(kunde, 200, "Sparmodus ist aus - WLAN bleibt ohnehin an.", "text/plain")
+            fenster_verlaengern(WLAN_VERLAENGERN_MIN)
+            return self._senden(kunde, 200, "WLAN bleibt noch %d Minuten an." % WLAN_VERLAENGERN_MIN,
+                                "text/plain")
         if methode == "GET" and pfad == "/ccu/senden":
             ok = self.melder.melden(self.feuchte)
             return self._senden(kunde, 200 if ok else 409,
@@ -562,12 +631,52 @@ class Webseite:
 # ============================================================================
 
 
+# Sparmodus: bis wann das WLAN-Fenster offen ist (ticks_ms) - None = zu
+FENSTER = {"bis": None}
+
+
+def spar_aktiv(modus):
+    return SPARMODUS and modus == "heim"
+
+
+def fenster_verlaengern(minuten):
+    """WLAN mindestens noch so viele Minuten anlassen."""
+    neu = time.ticks_add(time.ticks_ms(), minuten * 60000)
+    alt = FENSTER["bis"]
+    if alt is None or time.ticks_diff(neu, alt) > 0:
+        FENSTER["bis"] = neu
+
+
+def fenster_rest_min():
+    if FENSTER["bis"] is None:
+        return None
+    return max(0, time.ticks_diff(FENSTER["bis"], time.ticks_ms())) // 60000 + 1
+
+
+def schlafen(ms):
+    """Sparmodus: so lange schlafen (lightsleep, sonst normales Warten)."""
+    global LEICHTSCHLAF
+    if ms <= 0:
+        return
+    if LEICHTSCHLAF:
+        try:
+            machine.lightsleep(ms)
+            return
+        except Exception as e:                 # aeltere Firmware: dann eben normal warten
+            print("lightsleep nicht moeglich (" + str(e) + ") - warte normal.")
+            LEICHTSCHLAF = False
+    time.sleep_ms(ms)
+
+
 def main():
     global AKKU
     if akku and AKKU_BENUTZEN:
         AKKU = akku.Akku("Gartenfeuchte", AKKU_LAUFZEIT_H, AKKU_WARNEN_BEI_H, NTFY_THEMA,
-                         testlauf_text="Normalbetrieb: alle %d min messen und an die OpenCCU "
-                         "melden, WLAN bleibt an." % (MESSEN_ALLE_S // 60))
+                         testlauf_text="Normalbetrieb: " + (
+                             "Sparmodus, alle %d min messen und melden, WLAN-Fenster zur vollen "
+                             "Stunde." % (SPAR_MESSEN_ALLE_S // 60) if SPARMODUS else
+                             "alle %d min messen und an die OpenCCU melden, WLAN bleibt an."
+                             % (MESSEN_ALLE_S // 60)))
     sensor = Sensor()
     feuchte = Feuchte()
     melder = Melder()
@@ -580,6 +689,10 @@ def main():
             seite = Webseite(sensor, feuchte, melder, modus)
         except Exception as fehler:
             print("Webseite nicht moeglich:", fehler)
+
+    if spar_aktiv(modus):
+        sparbetrieb(sensor, feuchte, melder, seite, led)
+        return
 
     naechste_messung = time.ticks_ms()               # gleich nach dem Start messen
     naechste_wlan_pruefung = time.ticks_add(time.ticks_ms(), WLAN_PRUEFEN_ALLE_S * 1000)
@@ -606,6 +719,90 @@ def main():
         elif modus == "eigenes":
             led.value((time.ticks_ms() // 500) % 2)
         time.sleep_ms(20)
+
+
+def sparbetrieb(sensor, feuchte, melder, seite, led):
+    """Akkubetrieb: WLAN nur im Fenster zur vollen Stunde, sonst kurz zum Melden."""
+    uhr_ok = uhr_stellen()
+    fenster_verlaengern(WLAN_FENSTER_MIN)            # erstes Fenster direkt nach dem Einschalten
+    fenster_stunde = time.gmtime()[3]
+    start_ms = time.ticks_ms()
+    naechste_messung = start_ms                      # gleich messen
+    print("Sparmodus: WLAN-Fenster %d min zu jeder vollen Stunde, Messung alle %d min."
+          % (WLAN_FENSTER_MIN, SPAR_MESSEN_ALLE_S // 60))
+
+    while True:
+        jetzt = time.ticks_ms()
+        offen = FENSTER["bis"] is not None
+
+        # Fenster zur vollen Stunde oeffnen (ohne gestellte Uhr: stuendlich ab dem Start)
+        if not offen:
+            if uhr_ok:
+                t = time.gmtime()
+                stunde_voll = t[4] < WLAN_FENSTER_MIN and t[3] != fenster_stunde
+                if stunde_voll:
+                    fenster_stunde = t[3]
+            else:
+                stunde = time.ticks_diff(jetzt, start_ms) // 3600000
+                stunde_voll = stunde != fenster_stunde
+                if stunde_voll:
+                    fenster_stunde = stunde
+            if stunde_voll:
+                print("WLAN-Fenster auf.")
+                if wlan_an():
+                    fenster_verlaengern(WLAN_FENSTER_MIN)
+                    uhr_ok = uhr_stellen() or uhr_ok
+                    if seite is None:
+                        try:
+                            seite = Webseite(sensor, feuchte, melder, "heim")
+                        except Exception as fehler:
+                            print("Webseite nicht moeglich:", fehler)
+                    if AKKU and getattr(AKKU, "offen", None):
+                        AKKU.naechster_versuch = time.ticks_ms()   # wartende Push gleich senden
+                    offen = True
+                else:
+                    print("Heim-WLAN nicht erreichbar - naechstes Fenster in einer Stunde.")
+                    wlan_aus()
+
+        # Messen und melden
+        if time.ticks_diff(jetzt, naechste_messung) >= 0:
+            naechste_messung = time.ticks_add(jetzt, SPAR_MESSEN_ALLE_S * 1000)
+            feuchte.neuer_wert(sensor.messen())
+            if offen or wlan_an():
+                melder.melden(feuchte)
+                if AKKU and getattr(AKKU, "offen", None):
+                    AKKU._senden_offen()             # wartende Push-Nachricht mitnehmen
+                if not offen:
+                    wlan_aus()
+            else:
+                melder.ok, melder.info = False, "Heim-WLAN nicht erreichbar"
+                print("Meldung nicht moeglich: Heim-WLAN nicht erreichbar.")
+                wlan_aus()
+
+        if offen:
+            # Fenster offen: Webseite bedienen, normal weiterlaufen
+            led.value(1 if wlan_ok() else 0)
+            if seite:
+                seite.schritt()
+            melder.schritt(feuchte)
+            if AKKU:
+                AKKU.schritt(darf_senden=wlan_ok())
+            if time.ticks_diff(time.ticks_ms(), FENSTER["bis"]) >= 0:
+                FENSTER["bis"] = None
+                if seite:
+                    seite.schliessen()
+                    seite = None
+                wlan_aus()
+                led.off()
+                print("WLAN-Fenster zu, Sparbetrieb.")
+            time.sleep_ms(20)
+        else:
+            # Fenster zu: schlafen bis zur naechsten Messung (hoechstens 60 s am Stueck,
+            # damit die volle Stunde nicht verpasst wird)
+            if AKKU:
+                AKKU.schritt(darf_senden=False)
+            rest = time.ticks_diff(naechste_messung, time.ticks_ms())
+            schlafen(min(max(rest, 0), 60000))
 
 
 if __name__ == "__main__":

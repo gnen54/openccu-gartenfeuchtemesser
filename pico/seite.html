@@ -64,7 +64,13 @@ details{margin-top:4px}summary{cursor:pointer;font-weight:600}
  <div id="info"></div>
 </div>
 
-<p><a href="/akku" id="akkulink" style="display:none">Akku / Powerbank →</a></p>
+<div class="karte" id="spar" style="display:none">
+ <b>Sparmodus</b>
+ <div class="leise" id="spartext" style="margin-top:6px"></div>
+ <button style="margin-top:10px" onclick="verlaengern()" id="vk">WLAN länger anlassen</button>
+</div>
+
+<p><a href="/akku" id="akkulink" style="display:none">Akku →</a></p>
 </main>
 <script>
 let pin=null;try{pin=localStorage.getItem("pin")}catch(e){}
@@ -92,7 +98,11 @@ function zeig(s){const f=s.feuchte,c=s.ccu;
  $("ccuvar").textContent="Systemvariablen: "+c.variablen.join(", ");
  setzFeld("tmv",f.trocken_mv);setzFeld("nmv",f.nass_mv);setzFeld("fab",f.feucht_ab);setzFeld("tun",f.trocken_unter);
  $("akkulink").style.display=s.akku_h!=null?"inline":"none";
- if(s.akku_h!=null)$("akkulink").textContent="Akku / Powerbank: noch ca. "+Math.round(s.akku_h)+" h →"}
+ if(s.akku_h!=null)$("akkulink").textContent="Akku: noch ca. "+Math.round(s.akku_h)+" h →";
+ $("spar").style.display=s.sparmodus?"block":"none";
+ if(s.sparmodus){$("spartext").textContent="Die Seite ist nur zu jeder vollen Stunde 5 min erreichbar. WLAN noch "+(s.wlan_rest_min||0)+" min an.";
+  $("vk").textContent="WLAN "+s.verlaengern_min+" min länger anlassen"}}
+async function verlaengern(){try{$("info").textContent=await frag("/wlan/verlaengern");lade()}catch(e){$("info").textContent=e.message}}
 async function lade(){try{zeig(await frag("/status"))}catch(e){}}
 async function messen(){$("mk").disabled=true;try{zeig(await frag("/messen"))}catch(e){$("info").textContent=e.message}$("mk").disabled=false}
 async function kal(w){$("info").textContent="Messe …";try{zeig(await frag("/kalibrieren",{was:w}));$("info").textContent=(w==="trocken"?"Trocken":"Nass")+"-Wert gespeichert."}catch(e){$("info").textContent=e.message;lade()}}
