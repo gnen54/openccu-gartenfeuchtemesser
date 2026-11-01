@@ -1,0 +1,81 @@
+# Gehäuse für den Gartenfeuchtemesser
+
+Wasserdichtes 3D-Druck-Gehäuse für **Pico W + 4,8-V-Akkupack (4 × AA)**, mit Dichtnut
+für eine Rundschnur, 8 Deckelschrauben, zwei Befestigungslaschen und Kabelverschraubung
+für das Sensorkabel.
+
+![Vorschau](vorschau.png)
+
+| Datei | Inhalt |
+|---|---|
+| `gehaeuse_unterteil.stl` | Unterteil, druckfertig (Boden aufs Druckbett) |
+| `gehaeuse_deckel.stl` | Deckel, druckfertig (Außenseite aufs Druckbett) |
+| `gehaeuse.scad` | Anpassbare Vorlage für OpenSCAD (Akkumaße, Wandstärken, Löcher) |
+| `gehaeuse.py` | Erzeugt die beiden STL-Dateien (gleiche Maße wie die .scad) |
+
+## Maße
+
+| | |
+|---|---|
+| Unterteil außen | 69 × 91 mm, 39 mm tief; mit Dichtrand 89 × 111 mm |
+| mit Laschen | 139 mm lang |
+| Deckel | 89 × 111 × 4 mm (+ 3 mm Zentrierkragen) |
+| Innenraum | 64 × 86 × 36 mm |
+| Pico-Fach | 28 mm breit, 4 Stege für M2-Schrauben, oben 25 mm frei für den USB-Stecker |
+| Akkuschacht | 34 × 86 × 36 mm, ausgelegt für einen 2 × 2-Block 54 × 32 × 32 mm |
+
+**Akku zuerst messen!** Ist dein Akkupack anders gebaut (z. B. 4 Zellen nebeneinander),
+in `gehaeuse.scad` oben `AKKU = [Länge, Breite, Höhe]` eintragen. Passt er nicht, meldet
+OpenSCAD beim Rendern „Akku zu lang/zu hoch“ – dann `INNEN_L` bzw. `INNEN_H` vergrößern.
+
+## Einkaufsliste
+
+| Teil | Menge | Beispiel / Bezugsquelle |
+|---|---|---|
+| Rundschnur **Ø 3 mm**, Silikon oder EPDM | ca. 35 cm | [RS PRO Silikon-Dichtschnur Ø 3 mm × 5 m, RS 234-2909](https://de.rs-online.com/web/p/o-ring-schnure/2342909) · [RS PRO EPDM-Dichtschnur Ø 3 mm × 10 m, RS 234-1550](https://at.rs-online.com/web/p/o-ring-schnure/2341550) · als „Silikon Rundschnur 3 mm Meterware“ auch bei eBay/Amazon |
+| Kabelverschraubung **PG7**, IP68, Kabel 3–6,5 mm, **mit Gegenmutter** | 1 | z. B. [Delock 60193 (PG7, IP68, 3–6,5 mm, 10 Stück)](https://delock.de/produkt/60193/merkmale.html) – prüfen, ob die Gegenmutter dabei ist, sonst eine mit Gegenmutter wählen (z. B. [Hilpress ECO IP67 mit Gegenmutter](https://www.hilpress.com/kabelverschraubungen-und-zubehoer/kabelverschraubungen-und-zubehoer-pg/standard-kunststoff-verschraubungen/eco-ip67-mit-gegenmutter)) |
+| Schrauben M3 × 12, für Kunststoff (oder M3-Einschmelzmuttern + M3 × 10) | 8 | Baumarkt / Elektronikversand |
+| Schrauben M2 × 6, selbstschneidend | 4 | für den Pico |
+| Edelstahl-Senkkopfschrauben 4 × 30–40 mm + Dübel | 2 | Befestigung an Wand/Pfahl |
+| Schottky-Diode 1N5817 | 1 | zwischen Akku (+) und VSYS, siehe unten |
+| Trockenmittel-Beutel (Silicagel, klein) | 1 | gegen Kondenswasser |
+
+## Drucken
+
+- **Material:** ASA (UV-fest, beste Wahl für draußen) oder PETG. Kein PLA – es wird in der
+  Sonne weich.
+- **Wasserdicht drucken:** 4 Wände (Perimeter), 5 Boden- und Deckschichten, Infill 30–40 %.
+- **Keine Stützen nötig:** Der Dichtrand hat unten eine 45°-Fase. Unterteil mit dem Boden
+  aufs Bett, Deckel mit der glatten Außenseite aufs Bett.
+- Die Bohrung für die PG7 liegt waagerecht in der Wand; die kleine Brücke oben im Loch
+  druckt jeder Drucker. Ggf. mit einem 12,5-mm-Bohrer nacharbeiten.
+
+## Zusammenbau
+
+1. **Kabelverschraubung** unten einsetzen, Gegenmutter innen fest anziehen.
+2. **Pico** mit 4 Schrauben M2 auf die Stege, USB-Buchse zeigt zur Seite ohne Kabelloch
+   (nach der Montage oben).
+3. **Sensorkabel** durch die PG7 führen, am Pico anschließen (GP22, GND, GP26), Verschraubung
+   zudrehen.
+4. **Akkupack** in den großen Schacht, Kabel über die Aussparung der Trennwand zum Pico.
+   Leerräume mit einem Stück Schaumstoff füllen, damit nichts klappert.
+5. **Rundschnur** in die Nut drücken, auf Länge schneiden (ca. 33 cm), Enden stumpf
+   aneinanderstoßen und mit einem Tropfen Silikon-Dichtmasse verbinden. Die Schnur steht
+   ca. 0,8 mm über – das ist die Verpressung.
+6. **Trockenmittel** hinein, **Deckel** aufsetzen und die 8 Schrauben über Kreuz gleichmäßig
+   anziehen, bis der Deckel ringsum aufliegt.
+7. **Montage:** Kabel nach **unten**, Deckel nach vorn. Am besten geschützt unter einem
+   Vordach oder auf der Nordseite – direkte Sonne heizt das Gehäuse auf.
+
+## Akku: zwei wichtige Punkte
+
+- **Spannung:** 4 frisch geladene NiMH-Zellen haben bis zu 5,8 V. Der Pico verträgt an
+  **VSYS höchstens 5,5 V**. Darum gehört eine **Schottky-Diode 1N5817** in die Plus-Leitung
+  (Ring zum Pico hin). Sie senkt die Spannung um ca. 0,3–0,4 V und schützt zugleich vor
+  Verpolung. Akku-Plus → Diode → VSYS (Pin 39), Akku-Minus → GND (z. B. Pin 33).
+- **Laufzeit:** Mit dauerhaft verbundenem WLAN braucht der Pico W etwa 40–50 mA. Reale
+  AA-NiMH-Zellen haben meist 2000–2500 mAh (Aufdrucke wie „4200 mAh“ sind bei AA nicht
+  erreichbar). Das reicht nur für etwa **2 Tage**. Für einen Dauerbetrieb im Garten braucht
+  es einen Sparbetrieb (Pico schläft zwischen den Messungen, WLAN nur kurz an) – damit
+  sind mehrere Wochen möglich. Mit dem Testlauf auf der Akkuseite lässt sich die echte
+  Laufzeit messen.

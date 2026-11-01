@@ -49,7 +49,10 @@ Messung hin und her, wenn die Feuchte gerade um eine Grenze schwankt.
 - **Raspberry Pi Pico 2 WH** (oder Pico 2 W, Pico W/WH). Wichtig ist das **W** (WLAN).
 - **Capacitive Soil Moisture Sensor v1.2** mit 3-poligem Kabel (VCC, GND, AOUT)
 - Stromversorgung: USB-Netzteil **oder** Powerbank (Akku-Wächter zählt mit)
-- Wetterfestes Gehäuse für den Pico (z. B. Abzweigdose IP65 mit Kabelverschraubung)
+- Wetterfestes Gehäuse: **zum Selberdrucken im Ordner [`gehaeuse/`](gehaeuse/)** – mit
+  Akkuschacht für 4 × AA, Dichtnut für eine 3-mm-Rundschnur, Befestigungslaschen und
+  Kabelverschraubung PG7 (Einkaufsliste und Druckhinweise dort). Alternativ eine
+  Abzweigdose IP65 mit Kabelverschraubung.
 
 Für die **Raspberry-Pi-3-Variante** stattdessen: Raspberry Pi 3 + **ADS1115**-Modul (I2C).
 
@@ -310,6 +313,7 @@ raspi/gartenfeuchte.py        Variante Raspberry Pi 3 + ADS1115
 raspi/gartenfeuchte.service   systemd-Dienst
 openccu/variablen_anlegen.hms Systemvariablen per Skript anlegen
 openccu/waechter.hms          Wächter-Programm (Sicherheitsnetz)
+gehaeuse/                     3D-Druck-Gehäuse (STL, OpenSCAD, Einkaufsliste)
 ```
 
 ## Lizenz
